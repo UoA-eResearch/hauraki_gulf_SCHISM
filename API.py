@@ -36,7 +36,11 @@ def get_vars():
     return safe_dict
 
 @app.get("/")
-def get_var(file = files[0], variable = "depth", time = 0, format="json", limit:float = 100):
+def get_var(timestamp:str = "1994-02-01 01:00:00", variable:str = "depth", format:str = "json", limit:float = 100):
+    timestamp = pd.to_datetime(timestamp)
+    hour = timestamp.hour
+    file = f"../pvol/outputs/{timestamp.year}/{timestamp.month:02d}/schout_{timestamp.day}.nc"
+    print(f"Loading {file}")
     assert file in files
     nc = netCDF4.Dataset(file)
     lng = nc["SCHISM_hgrid_node_x"][:]
@@ -45,13 +49,13 @@ def get_var(file = files[0], variable = "depth", time = 0, format="json", limit:
     if len(values.shape) == 1:
         df = pd.DataFrame({"lat": lat, "lng": lng, variable: values})
     elif len(values.shape) == 3:
-        values = values[time, :, :]
+        values = values[hour, :, :]
         dfs = []
         for depth_level in range(values.shape[-1]):
             values_at_depth = values[:, depth_level]
             df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level})
             dfs.append(df)
-        df = pd.concat(dfs)
+        df = pd.concat(dfs).dropna()
     df = df.head(int(limit))
     if format == "json":
       return df.to_dict("records")

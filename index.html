@@ -5,14 +5,8 @@
 
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <script src="https://unpkg.com/deck.gl@^8.2.0/dist.min.js"></script>
-  <script src="https://unpkg.com/@deck.gl/carto@^8.2.0/dist.min.js"></script>
-  <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@9.0.8/dist.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-  <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"
-    integrity="sha512-lO8f7sIViqr9x5VE6Q72PS6f4FoZcuh5W9YzeSyfNRJ9z/qL3bkweiwG6keGzWS0BQzNDqAWXdBhYzFD6KffIw=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"
     integrity="sha512-zInFF17qBFVvvvFpIfeBzo7Tj7+rQxLeTJDmbxjBz5/zIr89YVbTNelNhdTT+/DCrxoVzBeUPVFJsczKbB7sew=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -131,6 +125,8 @@
           id: 'layer',
           data: data,
           wrapLongitude: true,
+          //sizeUnits: "meters",
+          //pointSize: 100,
           pointSize: 2,
           getPosition: d => [d.lng, d.lat, -d.depth * 100],
           pickable: true,
@@ -170,9 +166,9 @@
         }
       }
       $("#variable").change(function () {
-        window.selected = $("#variable option:selected").text()
-        console.log(`Selected variable: ${selected}`)
-        get_csv(BASE_URL + "/?format=csv&limit=1e9&variable=" + selected)
+        window.selected = this.value
+        console.log(`Selected variable: ${window.selected}`)
+        get_csv(BASE_URL + "/?format=csv&limit=1e9&variable=" + window.selected)
       })
     })
   </script>
