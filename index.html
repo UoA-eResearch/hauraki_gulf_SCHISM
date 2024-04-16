@@ -65,13 +65,15 @@
   </div>
   <script>
     var map = new deck.DeckGL({
-      mapStyle: deck.carto.BASEMAP.DARK_MATTER,
+      mapbox: false, /* disable map */
       initialViewState: {
         longitude: 174.7284,
         latitude: -36.9443,
         zoom: 9,
-        pitch: 0
+        pitch: 60,
+        maxPitch: 180
       },
+      parameters: {depthTest: false},
       controller: true,
       getCursor: () => "inherit",
     });
@@ -101,6 +103,54 @@
     // https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/docs
     BASE_URL = "https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/"
 
+    const BASEMAP = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`;
+
+    function handle_response(data) {
+      console.log(data)
+      var values = data.map(r => r[selected])
+      var min_val = arrayMin(values)
+      var max_val = arrayMax(values)
+      console.log(min_val, max_val)
+      var cmap = chroma.scale('Spectral').domain([min_val, max_val])
+      var layers = [
+        new deck.TerrainLayer({
+          elevationData: BASEMAP,
+          elevationDecoder:  {
+            rScaler: 0,
+            gScaler: 0,
+            bScaler: 0,
+            offset: 0
+          },
+          texture: BASEMAP
+        }),
+        new deck.PointCloudLayer({
+          id: 'layer',
+          data: data,
+          wrapLongitude: true,
+          pointSize: 2,
+          getPosition: d => [d.lng, d.lat, -d.depth * 100],
+          pickable: true,
+          getColor: d => cmap(d.depth).rgb()
+        })
+      ]
+      map.setProps({ layers: [...layers] });
+    }
+
+    function get_csv(url) {
+      Papa.parse(url, {
+        download: true,
+        dynamicTyping: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          handle_response(results.data)
+        }
+      })
+    }
+
+    window.selected = "depth"
+    get_csv(BASE_URL + "?format=csv&limit=1e9")
+
     fetch(BASE_URL + "vars").then(response => response.json()).then(data => {
       var variable = document.getElementById("variable")
       data.forEach(v => {
@@ -112,51 +162,10 @@
         variable.add(option)
       })
       $("#variable").change(function () {
-        var selected = $("#variable option:selected").text()
+        window.selected = $("#variable option:selected").text()
         console.log(`Selected variable: ${selected}`)
-        fetch(BASE_URL + "/?variable=" + selected).then(response => response.json()).then(data => {
-          console.log(data)
-          var values = data.map(r => r[selected])
-          var min_val = arrayMin(values)
-          var max_val = arrayMax(values)
-          console.log(min_val, max_val)
-          var cmap = chroma.scale('Spectral').domain([min_val, max_val])
-          var layers = [new deck.ScatterplotLayer({
-            id: 'layer',
-            data: data,
-            wrapLongitude: true,
-            filled: true,
-            getPosition: d => [d.lng, d.lat],
-            pickable: true,
-            getFillColor: d => cmap(d[selected]).rgb(),
-            //pointRadiusUnits: "pixels",
-            radiusMinPixels: 1,
-            getRadius: 3,
-          })]
-          map.setProps({ layers: [...layers] });
-        })
+        get_csv(BASE_URL + "/?format=csv&limit=1e9&variable=" + selected)
       })
-    })
-
-    fetch(BASE_URL).then(response => response.json()).then(data => {
-      var depth = data.map(r => r.depth)
-      var min_depth = arrayMin(depth)
-      var max_depth = arrayMax(depth)
-      console.log(min_depth, max_depth)
-      var cmap = chroma.scale('Spectral').domain([min_depth, max_depth])
-      var layers = [new deck.ScatterplotLayer({
-        id: 'layer',
-        data: data,
-        wrapLongitude: true,
-        filled: true,
-        getPosition: d => [d.lng, d.lat],
-        pickable: true,
-        getFillColor: d => cmap(d.depth).rgb(),
-        //pointRadiusUnits: "pixels",
-        radiusMinPixels: 1,
-        getRadius: 3,
-      })]
-      map.setProps({ layers: [...layers] });
     })
   </script>
 </body>

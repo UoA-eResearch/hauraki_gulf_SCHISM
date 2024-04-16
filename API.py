@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import netCDF4
@@ -28,7 +29,7 @@ def get_vars():
     return list(nc.variables.keys())
 
 @app.get("/")
-def get_var(file = files[0], variable = "depth", time = 0):
+def get_var(file = files[0], variable = "depth", time = 0, format="json", limit:float = 100):
     assert file in files
     nc = netCDF4.Dataset(file)
     lng = nc["SCHISM_hgrid_node_x"][:]
@@ -44,4 +45,9 @@ def get_var(file = files[0], variable = "depth", time = 0):
             df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level})
             dfs.append(df)
         df = pd.concat(dfs)
-    return df.to_dict("records")
+    df = df.head(int(limit))
+    if format == "json":
+      return df.to_dict("records")
+    elif format == "csv":
+      csv = df.to_csv(index=False)
+      return PlainTextResponse(csv)
