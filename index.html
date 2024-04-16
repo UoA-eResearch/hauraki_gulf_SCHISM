@@ -98,9 +98,10 @@
       return max;
     };
 
-    BASE_URL = "http://localhost:8000"
+    // https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/docs
+    BASE_URL = "https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/"
 
-    fetch(BASE_URL + "/vars").then(response => response.json()).then(data => {
+    fetch(BASE_URL + "vars").then(response => response.json()).then(data => {
       var variable = document.getElementById("variable")
       data.forEach(v => {
         var option = document.createElement("option")

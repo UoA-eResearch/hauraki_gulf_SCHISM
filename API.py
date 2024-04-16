@@ -6,9 +6,9 @@ import pandas as pd
 import netCDF4
 from glob import glob
 
-files = pd.Series(sorted(glob("../pvol/outputs/**/schout_*.nc", recursive=True)))
+files = sorted(glob("../pvol/outputs/**/schout_*.nc", recursive=True))
 
-app = FastAPI()
+app = FastAPI(root_path="/API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +29,7 @@ def get_vars():
 
 @app.get("/")
 def get_var(file = files[0], variable = "depth", time = 0):
+    assert file in files
     nc = netCDF4.Dataset(file)
     lng = nc["SCHISM_hgrid_node_x"][:]
     lat = nc["SCHISM_hgrid_node_y"][:]
