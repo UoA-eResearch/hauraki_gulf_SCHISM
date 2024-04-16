@@ -1,0 +1,163 @@
+<html>
+
+<head>
+  <title>Hauraki Gulf SCHISM Hindcast</title>
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script src="https://unpkg.com/deck.gl@^8.2.0/dist.min.js"></script>
+  <script src="https://unpkg.com/@deck.gl/carto@^8.2.0/dist.min.js"></script>
+  <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.0/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"
+    integrity="sha512-lO8f7sIViqr9x5VE6Q72PS6f4FoZcuh5W9YzeSyfNRJ9z/qL3bkweiwG6keGzWS0BQzNDqAWXdBhYzFD6KffIw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"
+    integrity="sha512-zInFF17qBFVvvvFpIfeBzo7Tj7+rQxLeTJDmbxjBz5/zIr89YVbTNelNhdTT+/DCrxoVzBeUPVFJsczKbB7sew=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+    integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    html,
+    body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #title {
+      position: absolute;
+      top: 30px;
+      left: 0;
+      right: 0;
+      margin: auto;
+      z-index: 1000;
+      width: 50%;
+      text-align: center;
+      color: white;
+      border-radius: 5px;
+      padding: 10px;
+      background-color: rgba(0, 0, 0, 0.8);
+      font-family: Arial, Helvetica, sans-serif;
+      text-shadow: 2px 2px #000000;
+      font-weight: normal;
+      font-size: 1rem;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
+      width: 300px;
+      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 900;
+      padding: 30px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 id="title">Hauraki Gulf SCHISM Hindcast</h1>
+  <div id="controls">
+    Variable: <select id="variable"></select>
+  </div>
+  <script>
+    var map = new deck.DeckGL({
+      mapStyle: deck.carto.BASEMAP.DARK_MATTER,
+      initialViewState: {
+        longitude: 174.7284,
+        latitude: -36.9443,
+        zoom: 9,
+        pitch: 0
+      },
+      controller: true,
+      getCursor: () => "inherit",
+    });
+
+    var layers = []
+
+    function arrayMin(arr) {
+      var len = arr.length, min = Infinity;
+      while (len--) {
+        if (arr[len] < min) {
+          min = arr[len];
+        }
+      }
+      return min;
+    };
+
+    function arrayMax(arr) {
+      var len = arr.length, max = -Infinity;
+      while (len--) {
+        if (arr[len] > max) {
+          max = arr[len];
+        }
+      }
+      return max;
+    };
+
+    BASE_URL = "http://localhost:8000"
+
+    fetch(BASE_URL + "/vars").then(response => response.json()).then(data => {
+      var variable = document.getElementById("variable")
+      data.forEach(v => {
+        var option = document.createElement("option")
+        option.text = v
+        if (option.text == "depth") {
+          option.selected = true
+        }
+        variable.add(option)
+      })
+      $("#variable").change(function () {
+        var selected = $("#variable option:selected").text()
+        console.log(`Selected variable: ${selected}`)
+        fetch(BASE_URL + "/?variable=" + selected).then(response => response.json()).then(data => {
+          console.log(data)
+          var values = data.map(r => r[selected])
+          var min_val = arrayMin(values)
+          var max_val = arrayMax(values)
+          console.log(min_val, max_val)
+          var cmap = chroma.scale('Spectral').domain([min_val, max_val])
+          var layers = [new deck.ScatterplotLayer({
+            id: 'layer',
+            data: data,
+            wrapLongitude: true,
+            filled: true,
+            getPosition: d => [d.lng, d.lat],
+            pickable: true,
+            getFillColor: d => cmap(d[selected]).rgb(),
+            //pointRadiusUnits: "pixels",
+            radiusMinPixels: 1,
+            getRadius: 3,
+          })]
+          map.setProps({ layers: [...layers] });
+        })
+      })
+    })
+
+    fetch(BASE_URL).then(response => response.json()).then(data => {
+      var depth = data.map(r => r.depth)
+      var min_depth = arrayMin(depth)
+      var max_depth = arrayMax(depth)
+      console.log(min_depth, max_depth)
+      var cmap = chroma.scale('Spectral').domain([min_depth, max_depth])
+      var layers = [new deck.ScatterplotLayer({
+        id: 'layer',
+        data: data,
+        wrapLongitude: true,
+        filled: true,
+        getPosition: d => [d.lng, d.lat],
+        pickable: true,
+        getFillColor: d => cmap(d.depth).rgb(),
+        //pointRadiusUnits: "pixels",
+        radiusMinPixels: 1,
+        getRadius: 3,
+      })]
+      map.setProps({ layers: [...layers] });
+    })
+  </script>
+</body>
+
+</html>
