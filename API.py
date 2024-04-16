@@ -3,6 +3,7 @@
 from fastapi import FastAPI, Response
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
 import pandas as pd
 import netCDF4
 from glob import glob
@@ -19,14 +20,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/files")
-def get_files():
-    return files.tolist()
-
 @app.get("/vars")
 def get_vars():
     nc = netCDF4.Dataset(files[0])
-    return list(nc.variables.keys())
+    safe_dict = {}
+    for key, value in nc.variables.items():
+        safe_subdict = {}
+        for k, v in value.__dict__.items():
+            if type(v) == np.int32:
+                v = int(v)
+            elif type(v) == np.float32:
+                v = float(v)
+            safe_subdict[k] = v
+        safe_dict[key] = safe_subdict
+    return safe_dict
 
 @app.get("/")
 def get_var(file = files[0], variable = "depth", time = 0, format="json", limit:float = 100):
