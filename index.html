@@ -183,6 +183,10 @@
         skipEmptyLines: true,
         complete: function (results) {
           handle_response(results.data)
+        },
+        error: function (err) {
+          console.error(err)
+          alert(err)
         }
       })
     }
