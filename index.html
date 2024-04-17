@@ -98,6 +98,7 @@
   </div>
   <div id="controls">
     Variable: <select id="variable"></select>
+    Legend: <div id="legend"></div>
   </div>
   <script>
     var map = new deck.DeckGL({
@@ -148,6 +149,12 @@
       var max_val = arrayMax(values)
       console.log(min_val, max_val)
       var cmap = chroma.scale('Spectral').domain([min_val, max_val])
+      $("#legend").empty()
+      var step = (max_val - min_val) / 5
+      for (var value = min_val; value <= max_val; value += step) {
+        var color = cmap(value).hex()
+        $("#legend").append(`<span style="background-color: ${color}; width: 20px; height: 20px; display: inline-block;"></span> ${value.toFixed(2)}<br>`)
+      }
       var layers = [
         new deck.TerrainLayer({
           elevationData: BASEMAP,
