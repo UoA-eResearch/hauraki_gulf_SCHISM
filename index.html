@@ -148,7 +148,7 @@
       var min_val = arrayMin(values)
       var max_val = arrayMax(values)
       console.log(min_val, max_val)
-      var cmap = chroma.scale('Spectral').domain([min_val, max_val])
+      var cmap = chroma.scale('Spectral').domain([max_val, min_val])
       $("#legend").empty()
       var step = (max_val - min_val) / 5
       for (var value = min_val; value <= max_val; value += step) {
@@ -174,7 +174,7 @@
           //sizeUnits: "meters",
           //pointSize: 100,
           pointSize: 2,
-          getPosition: d => [d.lng, d.lat, -d.depth * 100],
+          getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
           pickable: true,
           getColor: d => cmap(d[selected]).rgb()
         })
