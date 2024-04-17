@@ -176,7 +176,7 @@
           pointSize: 2,
           getPosition: d => [d.lng, d.lat, -d.depth * 100],
           pickable: true,
-          getColor: d => cmap(d.depth).rgb()
+          getColor: d => cmap(d[selected]).rgb()
         })
       ]
       map.setProps({ layers: [...layers] });
