@@ -56,6 +56,7 @@ def get_var(timestamp:str = "1994-02-01 01:00:00", variable:str = "depth", forma
             df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level})
             dfs.append(df)
         df = pd.concat(dfs).dropna()
+    print(df)
     df = df.head(int(limit))
     if format == "json":
       return df.to_dict("records")

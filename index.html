@@ -13,6 +13,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
     integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="text/javascript" src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
+  <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/moment.min.js"></script>
   <style>
     html,
     body {
@@ -42,7 +46,7 @@
 
     #controls {
       position: absolute;
-      bottom: 30px;
+      bottom: 170px;
       right: 10px;
       width: 300px;
       background-color: rgba(255, 255, 255, 0.8);
@@ -53,11 +57,45 @@
     #variable {
       max-width: 100%;
     }
+
+    #timeline {
+      width: 100%;
+      height: 150px;
+      position: absolute !important;
+      bottom: 0;
+      z-index: 900;
+      background-color: white;
+    }
+    
+    .vis-custom-time div::before {
+      content: "";
+      background: black;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, white, blue 40%, black);
+      left: -2px;
+      display: block;
+      position: relative;
+      width: 25px;
+      height: 25px;
+    }
+    #timeline #buttons {
+      position: absolute;
+      right: 20px;
+      bottom: 12%;
+      z-index: 20000;
+    }
   </style>
 </head>
 
 <body>
   <h1 id="title">Hauraki Gulf SCHISM Hindcast</h1>
+  <div id="timeline">
+    <div id="buttons">
+        <button type="button" class="btn" id="play"><i class="fas fa-play"></i></button>
+        <button type="button" onclick="window.timeline.zoomIn(1)" class="btn" id="zoomIn"><i class="fas fa-search-plus"></i></button>
+        <button type="button" onclick="window.timeline.zoomOut(1)" class="btn" id="zoomOut"><i class="fas fa-search-minus"></i></button>
+    </div>
+  </div>
   <div id="controls">
     Variable: <select id="variable"></select>
   </div>
@@ -125,6 +163,7 @@
           id: 'layer',
           data: data,
           wrapLongitude: true,
+          sizeUnits: "pixels",
           //sizeUnits: "meters",
           //pointSize: 100,
           pointSize: 2,
@@ -148,9 +187,6 @@
       })
     }
 
-    window.selected = "depth"
-    get_csv(BASE_URL + "?format=csv&limit=1e9")
-
     fetch(BASE_URL + "vars").then(response => response.json()).then(data => {
       console.log(data)
       for (var k in data) {
@@ -168,9 +204,82 @@
       $("#variable").change(function () {
         window.selected = this.value
         console.log(`Selected variable: ${window.selected}`)
-        get_csv(BASE_URL + "/?format=csv&limit=1e9&variable=" + window.selected)
+        update()
       })
     })
+    
+    // DOM element where the Timeline will be attached
+    var container = document.getElementById('timeline');
+
+    // Create a DataSet (allows two way data-binding)
+    var items = new vis.DataSet([
+      {id: 1, content: 'Data range', start: '1994-02-01 00:00:00', end: '2021-01-01 00:00:00'},
+    ]);
+
+    function snapDate(date) {
+        if (date < new Date("1994-02-01 00:00:00")) {
+            date = new Date("1994-02-01 00:00:00");
+        } else if (date >= new Date("2021-01-01 00:00:00")) {
+            date = new Date("2021-01-01 00:00:00");
+        }
+        date.setMinutes(0);
+        date.setSeconds(0);
+        return date;
+    }
+
+    // Configuration for the Timeline
+    var options = {
+      width: "100%",
+      zoomable: true,
+      zoomMin: 1000 * 60 * 60 * 24,
+      snap: snapDate
+    };
+
+    function dateFormat(date){
+        return moment(date).format("YYYY-MM-DD HH:mm");
+    }
+
+    // Create a Timeline
+    window.timeline = new vis.Timeline(container, items, options);
+    timeline.addCustomTime("1994-02-01 00:00", 1);
+    timeline.setCustomTimeTitle("Drag this control to display data for a specific time", 1)
+    timeline.setWindow("1990-01-01", "2025-01-01");
+
+    var playing = false;
+    var playInterval = setInterval(function() {
+        if (playing) {
+            var ct = timeline.getCustomTime(1);
+            var newTime = moment(ct).add(1, "hour");
+            if (newTime >= new Date("2021-01-01")) {
+                newTime = "1994-02-01";
+            }
+            timeline.setCustomTime(newTime, 1);
+            timechange()
+        }
+    }, 1000);
+
+    $("#play").click(function() {
+        console.log("play");
+        playing = !playing;
+        if (playing) {
+            $("#play i").attr("class", "fas fa-pause");   
+        } else {
+            $("#play i").attr("class", "fas fa-play");
+        }
+    });
+
+    timeline.on('timechanged', timechange);
+    
+    function timechange() {
+      console.log(timeline.getCustomTime(1))
+      update()
+    }
+
+    window.selected = "depth"
+    function update() {
+      get_csv(`${BASE_URL}/?format=csv&limit=1e9&variable=${window.selected}&timestamp=${dateFormat(timeline.getCustomTime(1))}`)
+    }
+    update()
   </script>
 </body>
 
