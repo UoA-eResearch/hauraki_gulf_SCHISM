@@ -48,18 +48,21 @@ def get_var(timestamp:str = "1994-02-01 01:00:00", variable:str = "depth", forma
         nc = netCDF4.Dataset(file)
         lng = nc["SCHISM_hgrid_node_x"][:]
         lat = nc["SCHISM_hgrid_node_y"][:]
+        wetdry = nc["wetdry_node"][:]
         values = nc[variable][:]
         if len(values.shape) == 1:
             df = pd.DataFrame({"lat": lat, "lng": lng, variable: values})
         elif len(values.shape) == 2:
             values = values[hour, :]
-            df = pd.DataFrame({"lat": lat, "lng": lng, variable: values})
+            wetdry = wetdry[hour, :]
+            df = pd.DataFrame({"lat": lat, "lng": lng, variable: values, "wetdry": wetdry})
         elif len(values.shape) == 3:
             values = values[hour, :, :]
+            wetdry = wetdry[hour, :]
             dfs = []
             for depth_level in range(values.shape[-1]):
                 values_at_depth = values[:, depth_level]
-                df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level})
+                df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level, "wetdry": wetdry})
                 dfs.append(df)
             df = pd.concat(dfs).dropna()
         print(df)
@@ -70,4 +73,5 @@ def get_var(timestamp:str = "1994-02-01 01:00:00", variable:str = "depth", forma
             csv = df.to_csv(index=False)
             return PlainTextResponse(csv)
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))

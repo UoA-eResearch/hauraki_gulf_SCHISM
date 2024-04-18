@@ -116,6 +116,7 @@
   </div>
   <div id="controls">
     Variable: <select id="variable"></select>
+    Hide dry zones: <input type="checkbox" id="hide_dry" /><br>
     Legend: <div id="legend">
               <div id="colorbar"></div>
               <input type="number" id="min" value=1 />
@@ -212,7 +213,6 @@
 
     function handle_response(data) {
       console.log(data)
-      window.data = data
       var values = data.map(r => r[selected])
       window.min_val = arrayMin(values)
       window.max_val = arrayMax(values)
@@ -258,6 +258,7 @@
         header: true,
         skipEmptyLines: true,
         complete: function (results) {
+          window.data = results.data
           handle_response(results.data)
         },
         error: function (err) {
@@ -360,6 +361,14 @@
       get_csv(`${BASE_URL}/?format=csv&limit=1e9&variable=${window.selected}&timestamp=${dateFormat(timeline.getCustomTime(1))}`)
     }
     update()
+
+    $("#hide_dry").change(function() {
+      if (this.checked && window.data[0].wetdry !== undefined) {
+        handle_response(window.data.filter(d => d.wetdry == 0))
+      } else {
+        handle_response(window.data)
+      }
+    })
   </script>
 </body>
 
