@@ -59,10 +59,26 @@ def get_var(timestamp:str = "1994-02-01 01:00:00", variable:str = "depth", forma
         elif len(values.shape) == 3:
             values = values[hour, :, :]
             wetdry = wetdry[hour, :]
+            if values.shape[-1] == 2:
+                values_x = values[:, 0]
+                values_y = values[:, 1]
+                df = pd.DataFrame({"lat": lat, "lng": lng, f"{variable}_x": values_x, f"{variable}_y": values_y, "wetdry": wetdry})
+            else:
+                dfs = []
+                for depth_level in range(values.shape[-1]):
+                    values_at_depth = values[:, depth_level]
+                    df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level, "wetdry": wetdry})
+                    dfs.append(df)
+                df = pd.concat(dfs).dropna()
+        elif variable == "hvel":
+            values = values[hour, :, :, :]
+            wetdry = wetdry[hour, :]
             dfs = []
-            for depth_level in range(values.shape[-1]):
-                values_at_depth = values[:, depth_level]
-                df = pd.DataFrame({"lat": lat, "lng": lng, variable: values_at_depth, "depth": depth_level, "wetdry": wetdry})
+            for depth_level in range(values.shape[-2]):
+                values_at_depth = values[:, depth_level, :]
+                values_x = values_at_depth[:, 0]
+                values_y = values_at_depth[:, 1]
+                df = pd.DataFrame({"lat": lat, "lng": lng, f"{variable}_x": values_x, f"{variable}_y": values_y, "depth": depth_level, "wetdry": wetdry})
                 dfs.append(df)
             df = pd.concat(dfs).dropna()
         print(df)

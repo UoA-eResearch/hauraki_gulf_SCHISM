@@ -185,20 +185,6 @@
 
     function render() {
       console.log(data)
-      var data = window.data;
-      if ($("#hide_dry").prop("checked") && data[0].wetdry !== undefined) {
-        data = data.filter(d => d.wetdry == 0)
-      }
-      var values = data.map(r => r[selected])
-      if (!window.min_val) {
-        window.min_val = arrayMin(values)
-        window.max_val = arrayMax(values)
-      }
-      console.log(min_val, max_val)
-      var cmap = chroma.scale('Spectral').domain([max_val, min_val])
-      updateLegendColors(cmap, min_val, max_val)
-      $("#min").val(min_val)
-      $("#max").val(max_val)
       var layers = [
         new deck.TerrainLayer({
           elevationData: BASEMAP,
@@ -209,8 +195,50 @@
             offset: 0
           },
           texture: BASEMAP
-        }),
-        new deck.PointCloudLayer({
+        })
+      ]
+      var data = window.data;
+      if ($("#hide_dry").prop("checked") && data[0].wetdry !== undefined) {
+        data = data.filter(d => d.wetdry == 0)
+      }
+      var shape = vars[selected].shape;
+      if (shape[shape.length - 1] == 2) {
+        console.log(data, selected)
+        var values = data.map(r => r[selected + "_x"])
+        if (!window.min_val) {
+          window.min_val = arrayMin(values)
+          window.max_val = arrayMax(values)
+        }
+        console.log(min_val, max_val)
+        var cmap = chroma.scale('Spectral').domain([max_val, min_val])
+        updateLegendColors(cmap, min_val, max_val)
+        $("#min").val(min_val)
+        $("#max").val(max_val)
+        // TODO: replace with arrows
+        layers.push(new deck.PointCloudLayer({
+          id: 'layer',
+          data: data,
+          wrapLongitude: true,
+          sizeUnits: "pixels",
+          //sizeUnits: "meters",
+          //pointSize: 100,
+          pointSize: 2,
+          getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
+          pickable: true,
+          getColor: d => cmap(d[selected + "_x"]).rgb(),
+        }))
+      } else {
+        var values = data.map(r => r[selected])
+        if (!window.min_val) {
+          window.min_val = arrayMin(values)
+          window.max_val = arrayMax(values)
+        }
+        console.log(min_val, max_val)
+        var cmap = chroma.scale('Spectral').domain([max_val, min_val])
+        updateLegendColors(cmap, min_val, max_val)
+        $("#min").val(min_val)
+        $("#max").val(max_val)
+        layers.push(new deck.PointCloudLayer({
           id: 'layer',
           data: data,
           wrapLongitude: true,
@@ -221,11 +249,8 @@
           getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
           pickable: true,
           getColor: d => cmap(d[selected]).rgb(),
-          updateTriggers: {
-            getColor: [max_val, min_val]
-          }
-        })
-      ]
+        }))
+      }
       map.setProps({ layers: [...layers] });
     }
 
@@ -250,6 +275,7 @@
 
     fetch(BASE_URL + "vars").then(response => response.json()).then(data => {
       console.log(data)
+      window.vars = data
       for (var k in data) {
         var v = data[k]
         if (v.long_name) {
