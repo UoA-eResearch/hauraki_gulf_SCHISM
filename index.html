@@ -84,6 +84,24 @@
       bottom: 12%;
       z-index: 20000;
     }
+    #legend {
+      position: relative;
+    }
+    #colorbar {
+      height: 100px;
+      width: 20px;
+    }
+    #legend input {
+        position: absolute;
+        left: 25px;
+        line-height: 0px;
+    }
+    #max {
+        top: 0;
+    }
+    #min {
+        bottom: 0;
+    }
   </style>
 </head>
 
@@ -98,7 +116,11 @@
   </div>
   <div id="controls">
     Variable: <select id="variable"></select>
-    Legend: <div id="legend"></div>
+    Legend: <div id="legend">
+              <div id="colorbar"></div>
+              <input type="number" id="min" value=1 />
+              <input type="number" id="max" value=10 />
+            </div>
   </div>
   <script>
     var map = new deck.DeckGL({
@@ -137,24 +159,68 @@
       return max;
     };
 
+    $("#legend input").change(function() {
+        var min_val = parseFloat($("#min").val())
+        var max_val = parseFloat($("#max").val())
+        console.log(min_val, max_val)
+        var cmap = chroma.scale('Spectral').domain([max_val, min_val])
+        var layers = [
+          new deck.TerrainLayer({
+            elevationData: BASEMAP,
+            elevationDecoder:  {
+              rScaler: 0,
+              gScaler: 0,
+              bScaler: 0,
+              offset: 0
+            },
+            texture: BASEMAP
+          }),
+          new deck.PointCloudLayer({
+            id: 'layer',
+            data: window.data,
+            wrapLongitude: true,
+            sizeUnits: "pixels",
+            //sizeUnits: "meters",
+            //pointSize: 100,
+            pointSize: 2,
+            getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
+            pickable: true,
+            getColor: d => cmap(d[selected]).rgb(),
+            updateTriggers: {
+              getColor: [max_val, min_val]
+            }
+          })
+        ]
+        map.setProps({ layers: [...layers] });
+    })
+
     // https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/docs
     BASE_URL = "https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/"
 
     const BASEMAP = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`;
 
+    function updateLegendColors(cmap, min_val, max_val) {
+      var colors = [];
+      var step = (max_val - min_val) / 10;
+      for (var value = min_val; value <= max_val; value += step) {
+        colors.push(cmap(value));
+      }
+      colors.reverse()
+      var gradientString = "linear-gradient(" + colors.join(",") + ")";
+      $("#colorbar").css("background", gradientString);
+    }
+
     function handle_response(data) {
       console.log(data)
+      window.data = data
       var values = data.map(r => r[selected])
-      var min_val = arrayMin(values)
-      var max_val = arrayMax(values)
+      window.min_val = arrayMin(values)
+      window.max_val = arrayMax(values)
       console.log(min_val, max_val)
       var cmap = chroma.scale('Spectral').domain([max_val, min_val])
-      $("#legend").empty()
-      var step = (max_val - min_val) / 5
-      for (var value = min_val; value <= max_val; value += step) {
-        var color = cmap(value).hex()
-        $("#legend").append(`<span style="background-color: ${color}; width: 20px; height: 20px; display: inline-block;"></span> ${value.toFixed(2)}<br>`)
-      }
+      updateLegendColors(cmap, min_val, max_val)
+      $("#min").val(min_val)
+      $("#max").val(max_val)
       var layers = [
         new deck.TerrainLayer({
           elevationData: BASEMAP,
@@ -176,7 +242,10 @@
           pointSize: 2,
           getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
           pickable: true,
-          getColor: d => cmap(d[selected]).rgb()
+          getColor: d => cmap(d[selected]).rgb(),
+          updateTriggers: {
+            getColor: [max_val, min_val]
+          }
         })
       ]
       map.setProps({ layers: [...layers] });
