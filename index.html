@@ -161,38 +161,9 @@
     };
 
     $("#legend input").change(function() {
-        var min_val = parseFloat($("#min").val())
-        var max_val = parseFloat($("#max").val())
-        console.log(min_val, max_val)
-        var cmap = chroma.scale('Spectral').domain([max_val, min_val])
-        var layers = [
-          new deck.TerrainLayer({
-            elevationData: BASEMAP,
-            elevationDecoder:  {
-              rScaler: 0,
-              gScaler: 0,
-              bScaler: 0,
-              offset: 0
-            },
-            texture: BASEMAP
-          }),
-          new deck.PointCloudLayer({
-            id: 'layer',
-            data: window.data,
-            wrapLongitude: true,
-            sizeUnits: "pixels",
-            //sizeUnits: "meters",
-            //pointSize: 100,
-            pointSize: 2,
-            getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
-            pickable: true,
-            getColor: d => cmap(d[selected]).rgb(),
-            updateTriggers: {
-              getColor: [max_val, min_val]
-            }
-          })
-        ]
-        map.setProps({ layers: [...layers] });
+        window.min_val = parseFloat($("#min").val())
+        window.max_val = parseFloat($("#max").val())
+        render()
     })
 
     // https://hauraki-gulf-schism-hindcast.cloud.edu.au/API/docs
@@ -203,6 +174,7 @@
     function updateLegendColors(cmap, min_val, max_val) {
       var colors = [];
       var step = (max_val - min_val) / 10;
+      if (step == 0) step = .1
       for (var value = min_val; value <= max_val; value += step) {
         colors.push(cmap(value));
       }
@@ -211,11 +183,17 @@
       $("#colorbar").css("background", gradientString);
     }
 
-    function handle_response(data) {
+    function render() {
       console.log(data)
+      var data = window.data;
+      if ($("#hide_dry").prop("checked") && data[0].wetdry !== undefined) {
+        data = data.filter(d => d.wetdry == 0)
+      }
       var values = data.map(r => r[selected])
-      window.min_val = arrayMin(values)
-      window.max_val = arrayMax(values)
+      if (!window.min_val) {
+        window.min_val = arrayMin(values)
+        window.max_val = arrayMax(values)
+      }
       console.log(min_val, max_val)
       var cmap = chroma.scale('Spectral').domain([max_val, min_val])
       updateLegendColors(cmap, min_val, max_val)
@@ -259,7 +237,9 @@
         skipEmptyLines: true,
         complete: function (results) {
           window.data = results.data
-          handle_response(results.data)
+          window.max_val = null
+          window.min_val = null
+          render()
         },
         error: function (err) {
           console.error(err)
@@ -362,13 +342,7 @@
     }
     update()
 
-    $("#hide_dry").change(function() {
-      if (this.checked && window.data[0].wetdry !== undefined) {
-        handle_response(window.data.filter(d => d.wetdry == 0))
-      } else {
-        handle_response(window.data)
-      }
-    })
+    $("#hide_dry").change(render)
   </script>
 </body>
 
