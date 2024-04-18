@@ -5,7 +5,7 @@
 
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <script src="https://unpkg.com/deck.gl@9.0.8/dist.min.js"></script>
+  <script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"
     integrity="sha512-zInFF17qBFVvvvFpIfeBzo7Tj7+rQxLeTJDmbxjBz5/zIr89YVbTNelNhdTT+/DCrxoVzBeUPVFJsczKbB7sew=="
@@ -184,7 +184,6 @@
     }
 
     function render() {
-      console.log(data)
       var layers = [
         new deck.TerrainLayer({
           elevationData: BASEMAP,
@@ -201,6 +200,7 @@
       if ($("#hide_dry").prop("checked") && data[0].wetdry !== undefined) {
         data = data.filter(d => d.wetdry == 0)
       }
+      console.log(data)
       var shape = vars[selected].shape;
       if (shape[shape.length - 1] == 2) {
         console.log(data, selected)
@@ -214,18 +214,24 @@
         updateLegendColors(cmap, min_val, max_val)
         $("#min").val(min_val)
         $("#max").val(max_val)
-        // TODO: replace with arrows
-        layers.push(new deck.PointCloudLayer({
-          id: 'layer',
-          data: data,
-          wrapLongitude: true,
-          sizeUnits: "pixels",
-          //sizeUnits: "meters",
-          //pointSize: 100,
-          pointSize: 2,
-          getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
-          pickable: true,
-          getColor: d => cmap(d[selected + "_x"]).rgb(),
+        var cone = new luma.ConeGeometry({
+            radius: 1,
+            height: 5,
+            cap: true
+        });
+        layers.push(new deck.SimpleMeshLayer({
+              id: 'layer',
+              data: data,
+              getColor: d => cmap(d[selected + "_x"]).rgb(),
+              getNormal: d => [0, 0, 0],
+              getOrientation: d => {
+                var angle = -Math.atan2(d[selected + "_y"], d[selected + "_x"]) * (180 / Math.PI);
+                return [0, angle, 0]; // [pitch, yaw, roll] degrees
+              },
+              getPosition: d => [d.lng, d.lat, (selected == "depth" ? -d.depth : d.depth - 32) * 100],
+              mesh: cone,
+              sizeScale: 30,
+              pickable: true
         }))
       } else {
         var values = data.map(r => r[selected])
@@ -273,19 +279,20 @@
       })
     }
 
+    window.selected = "wind_speed"
     fetch(BASE_URL + "vars").then(response => response.json()).then(data => {
       console.log(data)
       window.vars = data
       for (var k in data) {
         var v = data[k]
+        var selected_s = ""
+        if (k == window.selected) {
+          selected_s = "selected"
+        }
         if (v.long_name) {
-          var selected = ""
-          if (k == "depth") {
-            selected = "selected"
-          }
-          $("#variable").append(`<option value="${k}" ${selected}>${v.long_name} (${k})</option>`)
+          $("#variable").append(`<option value="${k}" ${selected_s}>${v.long_name} (${k})</option>`)
         } else {
-          $("#variable").append(`<option value="${k}">${k}</option>`)
+          $("#variable").append(`<option value="${k}" ${selected_s}>${k}</option>`)
         }
       }
       $("#variable").change(function () {
@@ -362,7 +369,6 @@
       update()
     }
 
-    window.selected = "depth"
     function update() {
       get_csv(`${BASE_URL}/?format=csv&limit=1e9&variable=${window.selected}&timestamp=${dateFormat(timeline.getCustomTime(1))}`)
     }
