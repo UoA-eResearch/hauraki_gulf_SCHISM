@@ -15,7 +15,7 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script type="text/javascript" src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
   <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css" />
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+  <script src="https://kit.fontawesome.com/16fe8c306e.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/moment.min.js"></script>
   <style>
     html,
@@ -110,8 +110,11 @@
   <div id="timeline">
     <div id="buttons">
         <button type="button" class="btn" id="play"><i class="fas fa-play"></i></button>
+        <button type="button" class="btn" id="step_backward"><i class="fa-solid fa-backward-step"></i></button>
+        <button type="button" class="btn" id="step_forward"><i class="fa-solid fa-forward-step"></i></button>
         <button type="button" onclick="window.timeline.zoomIn(1)" class="btn" id="zoomIn"><i class="fas fa-search-plus"></i></button>
         <button type="button" onclick="window.timeline.zoomOut(1)" class="btn" id="zoomOut"><i class="fas fa-search-minus"></i></button>
+        <input type="datetime-local" id="date" />
     </div>
   </div>
   <div id="controls">
@@ -325,7 +328,7 @@
     var options = {
       width: "100%",
       zoomable: true,
-      zoomMin: 1000 * 60 * 60 * 24,
+      zoomMin: 1000 * 60 * 60 * 12,
       snap: snapDate
     };
 
@@ -362,17 +365,45 @@
         }
     });
 
+    $("#step_forward").click(function() {
+        var ct = timeline.getCustomTime(1);
+        var newTime = moment(ct).add(1, "hour");
+        if (newTime >= new Date("2021-01-01")) {
+            newTime = "1994-02-01";
+        }
+        timeline.setCustomTime(newTime, 1);
+        timechange()
+    });
+
+    $("#step_backward").click(function() {
+        var ct = timeline.getCustomTime(1);
+        var newTime = moment(ct).subtract(1, "hour");
+        if (newTime < new Date("1994-02-01 00:00")) {
+            newTime = "1994-02-01";
+        }
+        timeline.setCustomTime(newTime, 1);
+        timechange()
+    });
+
     timeline.on('timechanged', timechange);
     
     function timechange() {
-      console.log(timeline.getCustomTime(1))
+      var ct = timeline.getCustomTime(1)
+      console.log(ct)
+      $("#date").val(dateFormat(ct))
       update()
     }
+
+    $("#date").change(function() {
+        var date = new Date(this.value);
+        timeline.setCustomTime(date, 1);
+        timechange()
+    });
 
     function update() {
       get_csv(`${BASE_URL}/?format=csv&limit=1e9&variable=${window.selected}&timestamp=${dateFormat(timeline.getCustomTime(1))}`)
     }
-    update()
+    timechange()
 
     $("#hide_dry").change(render)
   </script>
