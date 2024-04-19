@@ -115,6 +115,7 @@
         <button type="button" onclick="window.timeline.zoomIn(1)" class="btn" id="zoomIn"><i class="fas fa-search-plus"></i></button>
         <button type="button" onclick="window.timeline.zoomOut(1)" class="btn" id="zoomOut"><i class="fas fa-search-minus"></i></button>
         <input type="datetime-local" id="date" />
+        <span id="fps"></span>
     </div>
   </div>
   <div id="controls">
@@ -140,6 +141,10 @@
       controller: true,
       getCursor: () => "inherit",
     });
+
+    setInterval(function() {
+      $("#fps").text(Math.round(map.metrics.fps) + " FPS")
+    }, 100)
 
     var layers = []
 
