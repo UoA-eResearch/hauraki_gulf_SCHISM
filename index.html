@@ -396,6 +396,13 @@
 
     $("#date").change(function() {
         var date = new Date(this.value);
+        if (date == "Invalid Date") return;
+        if (date < new Date("1994-02-01 00:00")) {
+            date = "1994-02-01";
+        }
+        if (date >= new Date("2021-01-01")) {
+            date = "1994-02-01";
+        }
         timeline.setCustomTime(date, 1);
         timechange()
     });
