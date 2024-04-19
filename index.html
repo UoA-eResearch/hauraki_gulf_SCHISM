@@ -137,7 +137,6 @@
         pitch: 60,
         maxPitch: 180
       },
-      parameters: {depthTest: false},
       controller: true,
       getCursor: () => "inherit",
     });
@@ -207,7 +206,8 @@
             bScaler: 0,
             offset: 0
           },
-          texture: BASEMAP
+          texture: BASEMAP,
+          parameters: {depthTest: false},
         })
       ]
       var data = window.data;
