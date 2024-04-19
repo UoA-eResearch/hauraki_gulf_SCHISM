@@ -17,6 +17,7 @@
   <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css" />
   <script src="https://kit.fontawesome.com/16fe8c306e.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/moment.min.js"></script>
+  <script src="https://unpkg.com/stats.js@0.17.0/build/stats.min.js"></script>
   <style>
     html,
     body {
@@ -115,7 +116,6 @@
         <button type="button" onclick="window.timeline.zoomIn(1)" class="btn" id="zoomIn"><i class="fas fa-search-plus"></i></button>
         <button type="button" onclick="window.timeline.zoomOut(1)" class="btn" id="zoomOut"><i class="fas fa-search-minus"></i></button>
         <input type="datetime-local" id="date" />
-        <span id="fps"></span>
     </div>
   </div>
   <div id="controls">
@@ -142,9 +142,15 @@
       getCursor: () => "inherit",
     });
 
-    setInterval(function() {
-      $("#fps").text(Math.round(map.metrics.fps) + " FPS")
-    }, 100)
+    var stats = new Stats();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild( stats.dom );
+    function animate() {
+      stats.begin();
+      stats.end();
+      requestAnimationFrame( animate );
+    }
+    requestAnimationFrame( animate );
 
     var layers = []
 
